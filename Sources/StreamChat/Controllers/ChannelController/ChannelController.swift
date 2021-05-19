@@ -660,6 +660,17 @@ public extension _ChatChannelController {
         })
     }
     
+    /// Checks if typing events are configured for the channel
+    ///
+    /// - Returns: true if the channel is set and channel configuration has typing_events set to true
+    func typingEventsEnabled() -> Bool {
+        if let c = channel {
+            return c.config.typingEventsEnabled
+        } else {
+            return false
+        }
+    }
+    
     /// Sends the start typing event and schedule a timer to send the stop typing event.
     ///
     /// This method is meant to be called every time the user presses a key. The method will manage requests and timer as needed.
@@ -667,6 +678,11 @@ public extension _ChatChannelController {
     /// - Parameter completion: a completion block with an error if the request was failed.
     ///
     func sendKeystrokeEvent(completion: ((Error?) -> Void)? = nil) {
+        /// Ignore if typing events are not enabled
+        if !typingEventsEnabled() {
+            return
+        }
+
         /// Perform action only if channel is already created on backend side and have a valid `cid`.
         guard let cid = cid, isChannelAlreadyCreated else {
             channelModificationFailed { completion?($0) }
@@ -685,6 +701,11 @@ public extension _ChatChannelController {
     /// - Parameter completion: a completion block with an error if the request was failed.
     ///
     func sendStartTypingEvent(completion: ((Error?) -> Void)? = nil) {
+        /// Ignore if typing events are not enabled
+        if !typingEventsEnabled() {
+            return
+        }
+
         /// Perform action only if channel is already created on backend side and have a valid `cid`.
         guard let cid = cid, isChannelAlreadyCreated else {
             channelModificationFailed { completion?($0) }
@@ -703,6 +724,11 @@ public extension _ChatChannelController {
     /// - Parameter completion: a completion block with an error if the request was failed.
     ///
     func sendStopTypingEvent(completion: ((Error?) -> Void)? = nil) {
+        /// Ignore if typing events are not enabled
+        if !typingEventsEnabled() {
+            return
+        }
+
         /// Perform action only if channel is already created on backend side and have a valid `cid`.
         guard let cid = cid, isChannelAlreadyCreated else {
             channelModificationFailed { completion?($0) }
