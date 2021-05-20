@@ -873,8 +873,7 @@ public extension _ChatChannelController {
             return
         }
         
-        /// The channel is not marked as unread
-        guard let _ = channel?.isUnread else {
+        if channel?.isUnread != true {
             callback {
                 completion?(nil)
             }
