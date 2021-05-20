@@ -433,6 +433,16 @@ public class _ChatChannelController<ExtraData: ExtraDataTypes>: DataController, 
     }
 }
 
+// MARK: - Channel features
+
+public extension _ChatChannelController {
+    var areTypingEventsEnabled: Bool { channel?.config.typingEventsEnabled == true }
+    var areReactionsEnabled: Bool { channel?.config.reactionsEnabled == true }
+    var areRepliesEnabled: Bool { channel?.config.repliesEnabled == true }
+    var areReadEventsEnabled: Bool { channel?.config.readEventsEnabled == true }
+    var areUploadsEnabled: Bool { channel?.config.uploadsEnabled == true }
+}
+
 // MARK: - Channel actions
 
 public extension _ChatChannelController {
@@ -659,18 +669,7 @@ public extension _ChatChannelController {
             self.callback { completion?(error) }
         })
     }
-    
-    /// Checks if typing events are configured for the channel
-    ///
-    /// - Returns: true if the channel is set and channel configuration has typing_events set to true
-    func typingEventsEnabled() -> Bool {
-        if let c = channel {
-            return c.config.typingEventsEnabled
-        } else {
-            return false
-        }
-    }
-    
+     
     /// Sends the start typing event and schedule a timer to send the stop typing event.
     ///
     /// This method is meant to be called every time the user presses a key. The method will manage requests and timer as needed.
@@ -679,7 +678,10 @@ public extension _ChatChannelController {
     ///
     func sendKeystrokeEvent(completion: ((Error?) -> Void)? = nil) {
         /// Ignore if typing events are not enabled
-        if !typingEventsEnabled() {
+        if !areTypingEventsEnabled {
+            callback {
+                completion?(nil)
+            }
             return
         }
 
@@ -702,7 +704,10 @@ public extension _ChatChannelController {
     ///
     func sendStartTypingEvent(completion: ((Error?) -> Void)? = nil) {
         /// Ignore if typing events are not enabled
-        if !typingEventsEnabled() {
+        if !areTypingEventsEnabled {
+            callback {
+                completion?(nil)
+            }
             return
         }
 
@@ -725,7 +730,10 @@ public extension _ChatChannelController {
     ///
     func sendStopTypingEvent(completion: ((Error?) -> Void)? = nil) {
         /// Ignore if typing events are not enabled
-        if !typingEventsEnabled() {
+        if !areTypingEventsEnabled {
+            callback {
+                completion?(nil)
+            }
             return
         }
 
@@ -784,6 +792,14 @@ public extension _ChatChannelController {
             self.callback {
                 completion?(result)
             }
+        }
+    }
+
+    private func channelFeatureDisabled(feature: String, completion: ((Error?) -> Void)?) {
+        let error = ClientError.ChannelFeatureDisabled("Channel feature: \(feature) is disabled for this channel.")
+        log.error(error.localizedDescription)
+        callback {
+            completion?(error)
         }
     }
 
@@ -850,6 +866,21 @@ public extension _ChatChannelController {
             channelModificationFailed(completion)
             return
         }
+
+        /// Read events are not enabled for this channel
+        if !areReadEventsEnabled {
+            channelFeatureDisabled(feature: "read events", completion: completion)
+            return
+        }
+        
+        /// The channel is not marked as unread
+        guard let _ = channel?.isUnread else {
+            callback {
+                completion?(nil)
+            }
+            return
+        }
+
         updater.markRead(cid: cid) { error in
             self.callback {
                 completion?(error)
@@ -1239,4 +1270,8 @@ extension ClientError {
             "You can't specify a value outside the range 1-120 for cooldown duration."
         }
     }
+}
+
+extension ClientError {
+    class ChannelFeatureDisabled: ClientError {}
 }
