@@ -153,7 +153,7 @@ class ChannelController_Tests: StressTestCase {
         controller.synchronize()
         
         // Simulate successful network call.
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         
         // Check if state changed after successful network call.
         XCTAssertEqual(controller.state, .remoteDataFetched)
@@ -168,7 +168,7 @@ class ChannelController_Tests: StressTestCase {
 
         // Simulate failed network call.
         let error = TestError()
-        env.channelUpdater?.update_completion?(error)
+        env.channelUpdater?.update_completion?(.failure(error))
         
         // Check if state changed after failed network call.
         XCTAssertEqual(controller.state, .remoteDataFetchFailed(ClientError(with: error)))
@@ -196,7 +196,7 @@ class ChannelController_Tests: StressTestCase {
         XCTAssertFalse(completionCalled)
         
         // Simulate successful update
-        env.channelUpdater!.update_completion?(nil)
+        env.channelUpdater!.update_completion?(.success(dummyPayload(with: .unique)))
         // Release reference of completion so we can deallocate stuff
         env.channelUpdater!.update_completion = nil
         
@@ -219,7 +219,7 @@ class ChannelController_Tests: StressTestCase {
         try client.databaseContainer.writeSynchronously {
             try $0.saveChannel(payload: payload, query: nil)
         }
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         
         XCTAssertEqual(controller.channel?.cid, channelId)
         XCTAssertEqual(controller.messages.count, payload.messages.count)
@@ -241,7 +241,7 @@ class ChannelController_Tests: StressTestCase {
             try $0.saveChannel(payload: payload, query: nil)
         }
         env.channelUpdater?.update_channelCreatedCallback?(channelId)
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         
         XCTAssertEqual(controller.channel?.cid, channelId)
         XCTAssertEqual(controller.messages.count, payload.messages.count)
@@ -263,7 +263,7 @@ class ChannelController_Tests: StressTestCase {
             try $0.saveChannel(payload: payload, query: nil)
         }
         env.channelUpdater?.update_channelCreatedCallback?(channelId)
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         
         XCTAssertEqual(controller.channel?.cid, channelId)
         XCTAssertEqual(controller.messages.count, payload.messages.count)
@@ -288,7 +288,7 @@ class ChannelController_Tests: StressTestCase {
             try $0.saveChannel(payload: payload, query: nil)
         }
         env.channelUpdater?.update_channelCreatedCallback?(channelId)
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         
         XCTAssertEqual(controller.channel?.cid, channelId)
         XCTAssertEqual(controller.messages.count, payload.messages.count)
@@ -304,7 +304,7 @@ class ChannelController_Tests: StressTestCase {
         
         // Simulate failed update
         let testError = TestError()
-        env.channelUpdater!.update_completion?(testError)
+        env.channelUpdater!.update_completion?(.failure(testError))
         
         // Completion should be called with the error
         AssertAsync.willBeEqual(completionCalledError as? TestError, testError)
@@ -724,7 +724,7 @@ class ChannelController_Tests: StressTestCase {
         controller.synchronize()
             
         // Simulate network call response
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         
         // Assert delegate is notified about state changes
         AssertAsync.willBeEqual(delegate.state, .remoteDataFetched)
@@ -742,7 +742,7 @@ class ChannelController_Tests: StressTestCase {
         controller.synchronize()
         
         // Simulate network call response
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         //   env.messageUpdater.getMessage_completion?(nil)
         
         // Assert delegate is notified about state changes
@@ -1146,7 +1146,7 @@ class ChannelController_Tests: StressTestCase {
         }
         
         // Simulate successful network call
-        env.channelUpdater!.update_completion?(nil)
+        env.channelUpdater!.update_completion?(.success(dummyPayload(with: .unique)))
         
         // Assert that initial reported values are correct
         XCTAssertEqual(controller.channel?.cid, dummyChannel.channel.cid)
@@ -1188,7 +1188,7 @@ class ChannelController_Tests: StressTestCase {
         env.channelUpdater!.update_channelCreatedCallback?(dummyChannel.channel.cid)
         
         // Simulate successful network call.
-        env.channelUpdater!.update_completion?(nil)
+        env.channelUpdater!.update_completion?(.success(dummyPayload(with: .unique)))
         
         // Since initially the controller doesn't know it's final `cid`, it can't report correct initial values.
         // That's why we simulate delegate callbacks for initial values.
@@ -1224,7 +1224,7 @@ class ChannelController_Tests: StressTestCase {
         }
         
         // Simulate successful network call
-        env.channelUpdater!.update_completion?(nil)
+        env.channelUpdater!.update_completion?(.success(dummyPayload(with: .unique)))
         
         // Assert that initial reported values are correct
         XCTAssertEqual(controller.channel?.cid, dummyChannel.channel.cid)
@@ -1839,7 +1839,11 @@ class ChannelController_Tests: StressTestCase {
         )
         
         // Simulate successful update
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?
+            .update_completion?(.success(dummyPayload(
+                with: .unique,
+                messages: [.dummy(messageId: .unique, authorUserId: .unique)]
+            )))
         // Release reference of completion so we can deallocate stuff
         env.channelUpdater!.update_completion = nil
         
@@ -1847,6 +1851,18 @@ class ChannelController_Tests: StressTestCase {
         AssertAsync.willBeTrue(completionCalled)
         // `weakController` should be deallocated too
         AssertAsync.canBeReleased(&weakController)
+    }
+
+    func test_loadPreviousMessages_whenLoadedMessagesLessThanLimit_doesntFetchMessages() throws {
+        XCTFail()
+    }
+
+    func test_loadPreviousMessages_whenLoadedMessagesMoreThanLimit_fetchMessages() throws {
+        XCTFail()
+    }
+
+    func test_loadPreviousMessages_whenLoadedMessagesEqualToLimit_fetchMessages() throws {
+        XCTFail()
     }
     
     func test_loadPreviousMessages_throwsError_on_emptyMessages() throws {
@@ -1882,7 +1898,7 @@ class ChannelController_Tests: StressTestCase {
         
         // Simulate failed update
         let testError = TestError()
-        env.channelUpdater!.update_completion?(testError)
+        env.channelUpdater!.update_completion?(.failure(testError))
         
         // Completion should be called with the error
         AssertAsync.willBeEqual(completionCalledError as? TestError, testError)
@@ -1926,7 +1942,7 @@ class ChannelController_Tests: StressTestCase {
         )
         
         // Simulate successful update
-        env.channelUpdater?.update_completion?(nil)
+        env.channelUpdater?.update_completion?(.success(dummyPayload(with: .unique)))
         // Release reference of completion so we can deallocate stuff
         env.channelUpdater!.update_completion = nil
         
@@ -1969,7 +1985,7 @@ class ChannelController_Tests: StressTestCase {
         
         // Simulate failed update
         let testError = TestError()
-        env.channelUpdater!.update_completion?(testError)
+        env.channelUpdater!.update_completion?(.failure(testError))
         
         // Completion should be called with the error
         AssertAsync.willBeEqual(completionCalledError as? TestError, testError)
