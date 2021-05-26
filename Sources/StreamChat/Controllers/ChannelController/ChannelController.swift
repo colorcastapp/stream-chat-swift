@@ -436,10 +436,19 @@ public class _ChatChannelController<ExtraData: ExtraDataTypes>: DataController, 
 // MARK: - Channel features
 
 public extension _ChatChannelController {
+    /// `true` if the channel has typing events enabled. Defaults to `false` if the channel doesn't exist yet.
     var areTypingEventsEnabled: Bool { channel?.config.typingEventsEnabled == true }
+    
+    /// `true` if the channel has reactions enabled. Defaults to `false` if the channel doesn't exist yet.
     var areReactionsEnabled: Bool { channel?.config.reactionsEnabled == true }
+    
+    /// `true` if the channel has replies enabled. Defaults to `false` if the channel doesn't exist yet.
     var areRepliesEnabled: Bool { channel?.config.repliesEnabled == true }
+    
+    /// `true` if the channel has read events enabled. Defaults to `false` if the channel doesn't exist yet.
     var areReadEventsEnabled: Bool { channel?.config.readEventsEnabled == true }
+    
+    /// `true` if the channel supports uploading files/images. Defaults to `false` if the channel doesn't exist yet.
     var areUploadsEnabled: Bool { channel?.config.uploadsEnabled == true }
 }
 
@@ -678,7 +687,7 @@ public extension _ChatChannelController {
     ///
     func sendKeystrokeEvent(completion: ((Error?) -> Void)? = nil) {
         /// Ignore if typing events are not enabled
-        if !areTypingEventsEnabled {
+        guard areTypingEventsEnabled else {
             callback {
                 completion?(nil)
             }
@@ -704,10 +713,8 @@ public extension _ChatChannelController {
     ///
     func sendStartTypingEvent(completion: ((Error?) -> Void)? = nil) {
         /// Ignore if typing events are not enabled
-        if !areTypingEventsEnabled {
-            callback {
-                completion?(nil)
-            }
+        guard areTypingEventsEnabled else {
+            channelFeatureDisabled(feature: "typing events", completion: completion)
             return
         }
 
@@ -730,10 +737,8 @@ public extension _ChatChannelController {
     ///
     func sendStopTypingEvent(completion: ((Error?) -> Void)? = nil) {
         /// Ignore if typing events are not enabled
-        if !areTypingEventsEnabled {
-            callback {
-                completion?(nil)
-            }
+        guard areTypingEventsEnabled else {
+            channelFeatureDisabled(feature: "typing events", completion: completion)
             return
         }
 
@@ -795,6 +800,8 @@ public extension _ChatChannelController {
         }
     }
 
+    /// A convenience method that invokes the completion? with a ChannelFeatureDisabled error
+    /// ie. VCs should use the `are{FEATURE_NAME}Enabled` props (ie. `areReadEventsEnabled`) before using any feature
     private func channelFeatureDisabled(feature: String, completion: ((Error?) -> Void)?) {
         let error = ClientError.ChannelFeatureDisabled("Channel feature: \(feature) is disabled for this channel.")
         log.error(error.localizedDescription)
@@ -868,7 +875,7 @@ public extension _ChatChannelController {
         }
 
         /// Read events are not enabled for this channel
-        if !areReadEventsEnabled {
+        guard areReadEventsEnabled else {
             channelFeatureDisabled(feature: "read events", completion: completion)
             return
         }
