@@ -10,7 +10,7 @@ There is a special type of user object which is `CurrentUser`, representing the 
 let userId = "yourUserId"
 
 /// User controller for the intended user
-let userController = chatClient.usersController(userId: userId)
+let userController = chatClient.userController(userId: userId)
 
 /// Current user controller
 let currentUserController = chatClient.currentUserController()
@@ -18,7 +18,7 @@ let currentUserController = chatClient.currentUserController()
 
 ## Standard User
 
-`CharUser` is a simple object, you can access the information and (un)mute and (un)flag the user.
+`ChatUser` is a simple object, you can access the information and (un)mute and (un)flag the user.
 ```swift
 let user = userController.user
 print(user.name)
