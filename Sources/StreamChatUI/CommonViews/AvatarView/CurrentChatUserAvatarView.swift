@@ -72,7 +72,11 @@ open class _CurrentChatUserAvatarView<ExtraData: ExtraDataTypes>: _Control, Them
     @objc override open func updateContent() {
         let currentUserImageUrl = controller?.currentUser?.imageURL
         let placeholderImage = appearance.images.userAvatarPlaceholder1
-        avatarView.imageView.loadImage(from: currentUserImageUrl, placeholder: placeholderImage)
+        avatarView.imageView.loadImage(
+            from: currentUserImageUrl,
+            placeholder: placeholderImage,
+            components: components
+        )
         
         alpha = state == .normal ? 1 : 0.5
     }

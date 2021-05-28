@@ -54,7 +54,12 @@ class ImageCDN_Tests: XCTestCase {
         
         let url = URL(string: "https://wwww.stream-io-cdn.com/image.jpg")!
         let thumbnailUrl = URL(string: "https://wwww.stream-io-cdn.com/image.jpg?w=128&h=128&crop=bottom&resize=scale&ro=0")!
-        let processedURL = provider.thumbnailURL(originalURL: url, preferedSize: CGSize(width: 128, height: 128), crop: .bottom, resize: .scale)
+        let processedURL = provider.thumbnailURL(
+            originalURL: url,
+            preferedSize: CGSize(width: 128, height: 128),
+            crop: .bottom,
+            resize: .scale
+        )
         
         XCTAssertEqual(processedURL, thumbnailUrl)
     }
@@ -63,8 +68,14 @@ class ImageCDN_Tests: XCTestCase {
         let provider = StreamImageCDN()
         
         let url = URL(string: "https://wwww.stream-io-cdn.com/image.jpg?name=Luke")!
-        let thumbnailUrl = URL(string: "https://wwww.stream-io-cdn.com/image.jpg?name=Luke&w=128&h=128&crop=bottom&resize=scale&ro=0")!
-        let processedURL = provider.thumbnailURL(originalURL: url, preferedSize: CGSize(width: 128, height: 128), crop: .bottom, resize: .scale)
+        let thumbnailUrl =
+            URL(string: "https://wwww.stream-io-cdn.com/image.jpg?name=Luke&w=128&h=128&crop=bottom&resize=scale&ro=0")!
+        let processedURL = provider.thumbnailURL(
+            originalURL: url,
+            preferedSize: CGSize(width: 128, height: 128),
+            crop: .bottom,
+            resize: .scale
+        )
         
         XCTAssertEqual(processedURL, thumbnailUrl)
     }
@@ -73,7 +84,8 @@ class ImageCDN_Tests: XCTestCase {
         let provider = StreamImageCDN()
         
         let url = URL(string: "https://wwww.stream-io-cdn.com/image.jpg?name=Luke")!
-        let thumbnailUrl = URL(string: "https://wwww.stream-io-cdn.com/image.jpg?name=Luke&w=128&h=128&crop=center&resize=fill&ro=0")!
+        let thumbnailUrl =
+            URL(string: "https://wwww.stream-io-cdn.com/image.jpg?name=Luke&w=128&h=128&crop=center&resize=fill&ro=0")!
         let processedURL = provider.thumbnailURL(originalURL: url, preferedSize: CGSize(width: 128, height: 128))
         
         XCTAssertEqual(processedURL, thumbnailUrl)

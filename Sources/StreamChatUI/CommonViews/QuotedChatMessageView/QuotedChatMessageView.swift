@@ -148,7 +148,7 @@ private extension _QuotedChatMessageView {
     /// - Parameter imageUrl: The url of the image.
     func setAvatar(imageUrl: URL?) {
         let placeholder = appearance.images.userAvatarPlaceholder1
-        authorAvatarView.imageView.loadImage(from: imageUrl, placeholder: placeholder)
+        authorAvatarView.imageView.loadImage(from: imageUrl, placeholder: placeholder, components: components)
     }
 
     /// Sets the text of the `textView`.
@@ -197,7 +197,7 @@ private extension _QuotedChatMessageView {
             showAttachmentPreview()
         } else if let imagePayload = message.imageAttachments.first?.payload {
             attachmentPreviewView.contentMode = .scaleAspectFill
-            attachmentPreviewView.loadImage(from: imagePayload.imageURL)
+            attachmentPreviewView.loadImage(from: imagePayload.imageURL, components: components)
             showAttachmentPreview()
             // TODO: When we will have attachment examples we will set smth
             // different for different types.
@@ -206,7 +206,7 @@ private extension _QuotedChatMessageView {
             }
         } else if let linkPayload = message.linkAttachments.first?.payload {
             attachmentPreviewView.contentMode = .scaleAspectFill
-            attachmentPreviewView.loadImage(from: linkPayload.previewURL)
+            attachmentPreviewView.loadImage(from: linkPayload.previewURL, components: components)
             showAttachmentPreview()
         } else {
             attachmentPreviewView.image = nil
