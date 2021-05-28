@@ -362,7 +362,7 @@ open class _ChatMessageContentView<ExtraData: ExtraDataTypes>: _View, ThemeProvi
         }
 
         // Text
-        textView?.text = content?.text
+        textView?.text = content?.textContent
 
         // Avatar
         let placeholder = appearance.images.userAvatarPlaceholder1
@@ -373,23 +373,16 @@ open class _ChatMessageContentView<ExtraData: ExtraDataTypes>: _View, ThemeProvi
         }
 
         // Bubble view
-        if
-            let content = content,
-            content.imageAttachments.isEmpty,
-            content.giphyAttachments.isEmpty,
-            content.linkAttachments.isEmpty,
-            !content.linkAttachments.isEmpty {
-            bubbleView?.backgroundColor = appearance.colorPalette.highlightedAccentBackground1
-        } else if content?.type == .ephemeral {
+        if content?.type == .ephemeral {
             bubbleView?.backgroundColor = appearance.colorPalette.popoverBackground
         } else {
             bubbleView?.backgroundColor = content?.isSentByCurrentUser == true ?
-                appearance.colorPalette.background2 :
+                appearance.colorPalette.background6 :
                 appearance.colorPalette.popoverBackground
         }
 
         // Metadata
-        onlyVisibleForYouContainer?.isVisible = content?.onlyVisibleForCurrentUser ?? false
+        onlyVisibleForYouContainer?.isVisible = content?.isOnlyVisibleForCurrentUser == true
 
         authorNameLabel?.isVisible = layoutOptions?.contains(.authorName) == true
         authorNameLabel?.text = content?.author.name
@@ -407,13 +400,16 @@ open class _ChatMessageContentView<ExtraData: ExtraDataTypes>: _View, ThemeProvi
 
         // Thread info
         threadReplyCountButton?.setTitleColor(tintColor, for: .normal)
-        if let replyCount = content?.replyCount {
+        if let replyCount = content?.replyCount, replyCount > 0 {
             threadReplyCountButton?.setTitle(L10n.Message.Threads.count(replyCount), for: .normal)
         } else {
             threadReplyCountButton?.setTitle(L10n.Message.Threads.reply, for: .normal)
         }
         let latestReplyAuthorAvatar = content?.latestReplies.first?.author.imageURL
-        threadAvatarView?.imageView.loadImage(from: latestReplyAuthorAvatar)
+        threadAvatarView?.imageView.loadImage(
+            from: latestReplyAuthorAvatar,
+            placeholder: appearance.images.userAvatarPlaceholder4
+        )
 
         // Reactions view
         reactionsBubbleView?.tailDirection = content
@@ -486,9 +482,7 @@ open class _ChatMessageContentView<ExtraData: ExtraDataTypes>: _View, ThemeProvi
     open func createAvatarView() -> ChatAvatarView {
         if authorAvatarView == nil {
             authorAvatarView = components
-                .messageList
-                .messageContentSubviews
-                .authorAvatarView
+                .avatarView
                 .init()
                 .withoutAutoresizingMaskConstraints
         }
@@ -500,9 +494,7 @@ open class _ChatMessageContentView<ExtraData: ExtraDataTypes>: _View, ThemeProvi
     open func createThreadAvatarView() -> ChatAvatarView {
         if threadAvatarView == nil {
             threadAvatarView = components
-                .messageList
-                .messageContentSubviews
-                .authorAvatarView
+                .avatarView
                 .init()
                 .withoutAutoresizingMaskConstraints
         }
@@ -561,8 +553,6 @@ open class _ChatMessageContentView<ExtraData: ExtraDataTypes>: _View, ThemeProvi
     open func createReactionsView() -> _ChatMessageReactionsView<ExtraData> {
         if reactionsView == nil {
             reactionsView = components
-                .messageList
-                .messageReactions
                 .reactionsView
                 .init()
                 .withoutAutoresizingMaskConstraints
@@ -575,9 +565,7 @@ open class _ChatMessageContentView<ExtraData: ExtraDataTypes>: _View, ThemeProvi
     open func createErrorIndicatorView() -> ChatMessageErrorIndicator {
         if errorIndicatorView == nil {
             errorIndicatorView = components
-                .messageList
-                .messageContentSubviews
-                .errorIndicator
+                .messageErrorIndicator
                 .init()
                 .withoutAutoresizingMaskConstraints
 

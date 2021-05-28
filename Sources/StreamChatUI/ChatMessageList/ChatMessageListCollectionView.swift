@@ -24,7 +24,7 @@ open class ChatMessageListCollectionView<ExtraData: ExtraDataTypes>: UICollectio
     
     /// View used to display date of currently displayed messages
     open lazy var scrollOverlayView: ChatMessageListScrollOverlayView = {
-        let scrollOverlayView = components.messageList.scrollOverlayView.init()
+        let scrollOverlayView = components.messageListScrollOverlayView.init()
         scrollOverlayView.isHidden = true
         return scrollOverlayView.withoutAutoresizingMaskConstraints
     }()
@@ -37,7 +37,15 @@ open class ChatMessageListCollectionView<ExtraData: ExtraDataTypes>: UICollectio
     }
     
     private var contentOffsetObservation: NSKeyValueObservation?
-    
+
+    public required init(layout: ChatMessageListCollectionViewLayout) {
+        super.init(frame: .zero, collectionViewLayout: layout)
+    }
+
+    public required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+
     override open func didMoveToSuperview() {
         super.didMoveToSuperview()
         

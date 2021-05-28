@@ -52,7 +52,7 @@ final class ChatMessageContentView_Tests: XCTestCase {
         // Create custom components.
         var components = Components.default
         // Inject custom error indicator type.
-        components.messageList.messageContentSubviews.errorIndicator = TestErrorIndicator.self
+        components.messageErrorIndicator = TestErrorIndicator.self
 
         // Create message content view with the provided `message`, `layout`, and `config`
         let view = contentView(
@@ -294,14 +294,14 @@ extension _ChatMessage {
         if isLastInGroup {
             options.insert(.metadata)
         }
-        if isLastInGroup && onlyVisibleForCurrentUser {
+        if isLastInGroup && isOnlyVisibleForCurrentUser {
             options.insert(.onlyVisibleForYouIndicator)
         }
         if textContent?.isEmpty == false {
             options.insert(.text)
         }
 
-        guard deletedAt == nil else {
+        guard isDeleted == false else {
             return options
         }
 
@@ -311,14 +311,14 @@ extension _ChatMessage {
         if quotedMessage != nil {
             options.insert(.quotedMessage)
         }
-        if isPartOfThread {
+        if isRootOfThread {
             options.insert(.threadInfo)
             options.insert(.continuousBubble)
         }
         if !reactionScores.isEmpty {
             options.insert(.reactions)
         }
-        if lastActionFailed {
+        if isLastActionFailed {
             options.insert(.errorIndicator)
         }
 

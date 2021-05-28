@@ -61,14 +61,14 @@ open class _ChatMessageLayoutOptionsResolver<ExtraData: ExtraDataTypes> {
         if isLastInGroup {
             options.insert(.metadata)
         }
-        if message.onlyVisibleForCurrentUser {
+        if message.isOnlyVisibleForCurrentUser {
             options.insert(.onlyVisibleForYouIndicator)
         }
         if message.textContent?.isEmpty == false {
             options.insert(.text)
         }
 
-        guard message.deletedAt == nil else {
+        guard message.isDeleted == false else {
             return options
         }
 
@@ -81,15 +81,15 @@ open class _ChatMessageLayoutOptionsResolver<ExtraData: ExtraDataTypes> {
         if message.quotedMessage?.id != nil {
             options.insert(.quotedMessage)
         }
-        if message.isPartOfThread {
+        if message.isRootOfThread {
             options.insert(.threadInfo)
             // The bubbles with thread look like continuous bubbles
             options.insert(.continuousBubble)
         }
-        if !message.reactionScores.isEmpty {
+        if !message.reactionScores.isEmpty && channel.config.reactionsEnabled {
             options.insert(.reactions)
         }
-        if message.lastActionFailed {
+        if message.isLastActionFailed {
             options.insert(.errorIndicator)
         }
 

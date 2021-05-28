@@ -81,13 +81,26 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
         }
 
         /// Creates a new content struct with all empty data.
-        static func empty() -> Content {
+        static func initial() -> Content {
             .init(
                 text: "",
                 state: .new,
                 editingMessage: nil,
                 quotingMessage: nil,
                 threadMessage: nil,
+                attachments: [],
+                command: nil
+            )
+        }
+
+        /// Resets the current content state and clears the content.
+        public mutating func clear() {
+            self = .init(
+                text: "",
+                state: .new,
+                editingMessage: nil,
+                quotingMessage: nil,
+                threadMessage: threadMessage,
                 attachments: [],
                 command: nil
             )
@@ -140,7 +153,7 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
     }
 
     /// The content of the composer.
-    public var content: Content = .empty() {
+    public var content: Content = .initial() {
         didSet {
             updateContentIfNeeded()
         }
@@ -159,24 +172,26 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
     open var userSearchController: _ChatUserSearchController<ExtraData>!
 
     /// A controller that manages the channel that the composer is creating content for.
-    open var channelController: _ChatChannelController<ExtraData>!
+    open var channelController: _ChatChannelController<ExtraData>?
+
+    /// The channel config. If it's a new channel, an empty config should be created. (Not yet supported right now)
+    public var channelConfig: ChannelConfig? {
+        channelController?.channel?.config
+    }
 
     /// The view of the composer.
     open private(set) lazy var composerView: _ComposerView<ExtraData> = components
-        .messageComposer
         .messageComposerView.init()
         .withoutAutoresizingMaskConstraints
 
     /// The view controller that shows the suggestions when the user is typing.
     open private(set) lazy var suggestionsVC: _ChatSuggestionsViewController<ExtraData> = components
-        .messageComposer
-        .suggestionsViewController
+        .suggestionsVC
         .init()
     
     /// The view controller that shows the suggestions when the user is typing.
     open private(set) lazy var attachmentsVC: _AttachmentsPreviewVC<ExtraData> = components
-        .messageComposer
-        .attachmentsViewController
+        .messageComposerAttachmentsVC
         .init()
 
     /// The view controller for selecting image attachments.
@@ -239,8 +254,8 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
 
         composerView.inputMessageView.textView.text = content.text
 
-        if !content.isEmpty {
-            channelController.sendKeystrokeEvent()
+        if !content.isEmpty && channelConfig?.typingEventsEnabled == true {
+            channelController?.sendKeystrokeEvent()
         }
 
         switch content.state {
@@ -269,10 +284,14 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
 
         composerView.sendButton.isEnabled = !content.isEmpty
         composerView.confirmButton.isEnabled = !content.isEmpty
+
+        let isAttachmentButtonHidden = !content.isEmpty || channelConfig?.uploadsEnabled == false
+        let isCommandsButtonHidden = !content.isEmpty
+        let isShrinkInputButtonHidden = content.isEmpty
         Animate {
-            self.composerView.attachmentButton.isHidden = !self.content.isEmpty
-            self.composerView.commandsButton.isHidden = !self.content.isEmpty
-            self.composerView.shrinkInputButton.isHidden = self.content.isEmpty
+            self.composerView.attachmentButton.isHidden = isAttachmentButtonHidden
+            self.composerView.commandsButton.isHidden = isCommandsButtonHidden
+            self.composerView.shrinkInputButton.isHidden = isShrinkInputButtonHidden
         }
 
         composerView.inputMessageView.content = .init(
@@ -294,7 +313,7 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
         composerView.inputMessageView.attachmentsViewContainer.isHidden = content.attachments.isEmpty
 
         if content.isInsideThread {
-            if channelController.channel?.isDirectMessageChannel == true {
+            if channelController?.channel?.isDirectMessageChannel == true {
                 composerView.checkboxControl.label.text = L10n.Composer.Checkmark.directMessageReply
             } else {
                 composerView.checkboxControl.label.text = L10n.Composer.Checkmark.channelReply
@@ -340,7 +359,7 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
             createNewMessage(text: text)
         }
 
-        content = .empty()
+        content.clear()
     }
     
     @objc open func showAttachmentsPicker(sender: UIButton) {
@@ -401,11 +420,17 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
     
     @objc open func shrinkInput(sender: UIButton) {
         Animate {
-            let leadingContainerSubviews = self.composerView.leadingContainer.subviews
-            for subview in leadingContainerSubviews where subview !== self.composerView.shrinkInputButton {
-                subview.isHidden = false
-            }
             self.composerView.shrinkInputButton.isHidden = true
+            self.composerView.leadingContainer.subviews
+                .filter { $0 !== self.composerView.shrinkInputButton }
+                .forEach {
+                    $0.isHidden = false
+                }
+
+            // If attachment uploads is disabled, don't ever show the attachments button
+            if self.channelController?.channel?.config.uploadsEnabled == false {
+                self.composerView.attachmentButton.isHidden = true
+            }
         }
     }
     
@@ -418,24 +443,24 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
     }
     
     @objc open func clearContent(sender: UIButton) {
-        content = .empty()
+        content.clear()
     }
 
     /// Creates a new message and notifies the delegate that a new message was created.
     /// - Parameter text: The text content of the message.
     open func createNewMessage(text: String) {
-        guard let cid = channelController.cid else { return }
+        guard let cid = channelController?.cid else { return }
         defer {
             delegate?.composerDidCreateNewMessage()
         }
 
         if let threadParentMessageId = content.threadMessage?.id {
-            let messageController = channelController.client.messageController(
+            let messageController = channelController?.client.messageController(
                 cid: cid,
                 messageId: threadParentMessageId
             )
 
-            messageController.createNewReply(
+            messageController?.createNewReply(
                 text: text,
                 pinning: nil,
                 attachments: content.attachments,
@@ -445,7 +470,7 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
             return
         }
 
-        channelController.createNewMessage(
+        channelController?.createNewMessage(
             text: text,
             pinning: nil,
             attachments: content.attachments,
@@ -458,13 +483,13 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
     ///   - id: The id of the editing message.
     ///   - newText: The new text content of the message.
     open func editMessage(withId id: MessageId, newText: String) {
-        guard let cid = channelController.cid else { return }
-        let messageController = channelController.client.messageController(
+        guard let cid = channelController?.cid else { return }
+        let messageController = channelController?.client.messageController(
             cid: cid,
             messageId: id
         )
         // TODO: Adjust LLC to edit attachments also
-        messageController.editMessage(text: newText)
+        messageController?.editMessage(text: newText)
     }
 
     /// Returns a potential user mention in case the user is currently typing a username.
@@ -479,6 +504,12 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
             range: NSRange(location: 0, length: caretLocation)
         )
         guard firstMentionSymbolBeforeCaret.location != NSNotFound else {
+            return nil
+        }
+
+        let charIndexBeforeMentionSymbol = firstMentionSymbolBeforeCaret.lowerBound - 1
+        let charRangeBeforeMentionSymbol = NSRange(location: charIndexBeforeMentionSymbol, length: 1)
+        if charIndexBeforeMentionSymbol >= 0, text.substring(with: charRangeBeforeMentionSymbol) != " " {
             return nil
         }
         
@@ -517,7 +548,7 @@ open class _ComposerVC<ExtraData: ExtraDataTypes>: _ViewController,
     /// Shows the command suggestions for the potential command the current user is typing.
     /// - Parameter typingCommand: The potential command that the current user is typing.
     open func showCommandSuggestions(for typingCommand: String) {
-        let availableCommands = channelController.channel?.config.commands ?? []
+        let availableCommands = channelController?.channel?.config.commands ?? []
         var commandHints: [Command] = availableCommands
 
         if !typingCommand.isEmpty {

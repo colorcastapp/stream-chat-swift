@@ -211,7 +211,7 @@ public class _ChatChannelController<ExtraData: ExtraDataTypes>: DataController, 
         client.apiClient
     )
     
-    private lazy var eventSender: EventSender<ExtraData> = self.environment.eventSenderBuilder(
+    private lazy var eventSender: TypingEventsSender<ExtraData> = self.environment.eventSenderBuilder(
         client.databaseContainer,
         client.apiClient
     )
@@ -996,6 +996,50 @@ public extension _ChatChannelController {
             }
         }
     }
+    
+    /// Freezes the channel.
+    ///
+    /// Freezing a channel will disallow sending new messages and sending / deleting reactions.
+    /// For more information, see https://getstream.io/chat/docs/ios-swift/freezing_channels/?language=swift
+    ///
+    /// - Parameter completion: The completion. Will be called on a **callbackQueue** when the network request is finished.
+    ///                 If request fails, the completion will be called with an error.
+    ///
+    func freezeChannel(completion: ((Error?) -> Void)? = nil) {
+        /// Perform action only if channel is already created on backend side and have a valid `cid`.
+        guard let cid = cid, isChannelAlreadyCreated else {
+            channelModificationFailed(completion)
+            return
+        }
+        
+        updater.freezeChannel(true, cid: cid) { error in
+            self.callback {
+                completion?(error)
+            }
+        }
+    }
+    
+    /// Unfreezes the channel.
+    ///
+    /// Freezing a channel will disallow sending new messages and sending / deleting reactions.
+    /// For more information, see https://getstream.io/chat/docs/ios-swift/freezing_channels/?language=swift
+    ///
+    /// - Parameter completion: The completion. Will be called on a **callbackQueue** when the network request is finished.
+    ///                 If request fails, the completion will be called with an error.
+    ///
+    func unfreezeChannel(completion: ((Error?) -> Void)? = nil) {
+        /// Perform action only if channel is already created on backend side and have a valid `cid`.
+        guard let cid = cid, isChannelAlreadyCreated else {
+            channelModificationFailed(completion)
+            return
+        }
+        
+        updater.freezeChannel(false, cid: cid) { error in
+            self.callback {
+                completion?(error)
+            }
+        }
+    }
 }
 
 extension _ChatChannelController {
@@ -1008,7 +1052,7 @@ extension _ChatChannelController {
         var eventSenderBuilder: (
             _ database: DatabaseContainer,
             _ apiClient: APIClient
-        ) -> EventSender<ExtraData> = EventSender.init
+        ) -> TypingEventsSender<ExtraData> = TypingEventsSender.init
     }
 }
 

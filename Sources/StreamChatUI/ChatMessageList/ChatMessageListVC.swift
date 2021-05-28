@@ -38,13 +38,15 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
     
     /// Layout used by the collection view.
     open lazy var messageListLayout: ChatMessageListCollectionViewLayout = components
-        .messageList
-        .collectionLayout
+        .messageListLayout
         .init()
     
     /// View used to display the messages
     open private(set) lazy var collectionView: ChatMessageListCollectionView<ExtraData> = {
-        let collection = ChatMessageListCollectionView<ExtraData>(frame: .zero, collectionViewLayout: messageListLayout)
+        let collection = components
+            .messageListCollectionView
+            .init(layout: messageListLayout)
+            .withoutAutoresizingMaskConstraints
 
         collection.isPrefetchingEnabled = false
         collection.showsHorizontalScrollIndicator = false
@@ -53,24 +55,33 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
         collection.dataSource = self
         collection.delegate = self
 
-        return collection.withoutAutoresizingMaskConstraints
+        return collection
     }()
     
     /// Controller that handles the composer view
     open private(set) lazy var messageComposerVC = components
-        .messageComposer
-        .messageComposerViewController
+        .messageComposerVC
         .init()
     
     /// View displaying status of the channel.
     ///
     /// The status differs based on the fact if the channel is direct or not.
-    open lazy var titleView: TitleContainerView = components.navigationTitleView.init()
+    open private(set) lazy var titleView: TitleContainerView = components.navigationTitleView.init()
+        .withoutAutoresizingMaskConstraints
+    
+    /// View for displaying the channel image in the navigation bar.
+    open private(set) lazy var channelAvatarView = components
+        .channelAvatarView.init()
+        .withoutAutoresizingMaskConstraints
+    
+    /// View which displays information about current users who are typing.
+    public private(set) lazy var typingIndicatorView: _TypingIndicatorView<ExtraData> = components
+        .typingIndicatorView
+        .init()
         .withoutAutoresizingMaskConstraints
 
-    /// Handles navigation actions from messages
+    /// A router object that handles navigation to other view controllers.
     open lazy var router = components
-        .navigation
         .messageListRouter
         .init(rootViewController: self)
     
@@ -99,10 +110,10 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
         
         if channelController.channel?.isDirectMessageChannel == true {
             timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-                self?.updateNavigationTitle()
+                self?.updateNavigationBarContent()
             }
         }
-        updateNavigationTitle()
+        updateNavigationBarContent()
     }
     
     override open func setUpLayout() {
@@ -119,14 +130,32 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
         messageComposerVC.view.trailingAnchor.pin(equalTo: view.safeAreaLayoutGuide.trailingAnchor).isActive = true
         messageComposerBottomConstraint = messageComposerVC.view.bottomAnchor.pin(equalTo: view.bottomAnchor)
         messageComposerBottomConstraint?.isActive = true
+        
+        if channelController.channel?.config.typingEventsEnabled == true {
+            let typingIndicatorViewHeight: CGFloat = 22
+            
+            view.addSubview(typingIndicatorView)
+            typingIndicatorView.heightAnchor.pin(equalToConstant: typingIndicatorViewHeight).isActive = true
+            typingIndicatorView.pin(anchors: [.leading, .trailing], to: view)
+            typingIndicatorView.bottomAnchor.pin(equalTo: messageComposerVC.view.topAnchor).isActive = true
+            typingIndicatorView.isHidden = true
+            
+            collectionView.contentInset.bottom += typingIndicatorViewHeight
+        }
+        
+        NSLayoutConstraint.activate([
+            channelAvatarView.widthAnchor.pin(equalTo: channelAvatarView.heightAnchor),
+            channelAvatarView.heightAnchor.pin(equalToConstant: 32)
+        ])
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: channelAvatarView)
     }
 
     override open func setUpAppearance() {
         super.setUpAppearance()
         
-        view.backgroundColor = .white
+        view.backgroundColor = appearance.colorPalette.background
         
-        collectionView.backgroundColor = .white
+        collectionView.backgroundColor = appearance.colorPalette.background
         
         navigationItem.titleView = titleView
     }
@@ -243,9 +272,9 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
     /// If the channel is direct between two people this method is called repeatedly every minute
     /// to update the online status of the members.
     /// For group chat is called every-time the channel changes.
-    open func updateNavigationTitle() {
+    open func updateNavigationBarContent() {
         let title = channelController.channel
-            .flatMap { components.channelList.channelNamer($0, channelController.client.currentUserId) }
+            .flatMap { components.channelNamer($0, channelController.client.currentUserId) }
         
         let subtitle: String? = {
             if channelController.channel?.isDirectMessageChannel == true {
@@ -267,6 +296,8 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
         }()
 
         titleView.content = (title: title, subtitle: subtitle)
+        
+        channelAvatarView.content = (channelController.channel, channelController.client.currentUserId)
     }
 
     /// Handles long press action on collection view.
@@ -305,13 +336,17 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
             cid: channelController.cid!,
             messageId: message.id
         )
-
+        
         let actionsController = _ChatMessageActionsVC<ExtraData>()
         actionsController.messageController = messageController
+        actionsController.channelConfig = channelController.channel?.config
         actionsController.delegate = .init(delegate: self)
 
         let reactionsController: _ChatMessageReactionsVC<ExtraData>? = {
             guard message.localState == nil else { return nil }
+            guard channelController.channel?.config.reactionsEnabled == true else {
+                return nil
+            }
 
             let controller = _ChatMessageReactionsVC<ExtraData>()
             controller.messageController = messageController
@@ -344,10 +379,9 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
             let message = cell.messageContentView?.content
         else { return }
         router.showImageGallery(
-            for: message,
+            message: message,
             initialAttachment: attachment,
-            previews: previews,
-            from: self
+            previews: previews
         )
     }
     
@@ -355,11 +389,11 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
         _ attachment: ChatMessageLinkAttachment,
         at indexPath: IndexPath
     ) {
-        router.showPreview(for: attachment.payload.ogURL)
+        router.showLinkPreview(link: attachment.originalURL)
     }
 
     public func didTapOnAttachment(_ attachment: ChatMessageFileAttachment, at indexPath: IndexPath) {
-        router.showPreview(for: attachment.payload.assetURL)
+        router.showFilePreview(fileURL: attachment.payload.assetURL)
     }
     
     /// Executes the provided action on the message
@@ -377,11 +411,11 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
     }
     
     /// Opens thread detail for given `message`
-    open func showThread(for message: _ChatMessage<ExtraData>) {
-        guard let channel = channelController.channel else { log.error("Channel is not available"); return }
+    open func showThread(messageId: MessageId) {
+        guard let cid = channelController.cid else { log.error("Channel is not available"); return }
         router.showThread(
-            for: message,
-            in: channel,
+            messageId: messageId,
+            cid: cid,
             client: channelController.client
         )
     }
@@ -405,9 +439,44 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
         _ channelController: _ChatChannelController<ExtraData>,
         didUpdateChannel channel: EntityChange<_ChatChannel<ExtraData>>
     ) {
-        updateNavigationTitle()
+        updateNavigationBarContent()
     }
 
+    open func channelController(
+        _ channelController: _ChatChannelController<ExtraData>,
+        didChangeTypingMembers typingMembers: Set<_ChatChannelMember<ExtraData.User>>
+    ) {
+        let typingMembersWithoutCurrentUser = typingMembers
+            .sorted { $0.id < $1.id }
+            .filter { $0.id != self.channelController.client.currentUserId }
+        
+        if typingMembersWithoutCurrentUser.isEmpty {
+            hideTypingIndicator()
+        } else {
+            showTypingIndicator(typingMembers: typingMembersWithoutCurrentUser)
+        }
+    }
+    
+    /// Shows typing Indicator
+    /// - Parameter typingMembers: typing members gotten from `channelController`
+    open func showTypingIndicator(typingMembers: [_ChatChannelMember<ExtraData.User>]) {
+        // If we somehow cannot fetch any member name, we simply show that `Someone is typing`
+        guard let member = typingMembers.first(where: { user in user.name != nil }), let name = member.name else {
+            typingIndicatorView.content = L10n.MessageList.TypingIndicator.typingUnknown
+            typingIndicatorView.isHidden = false
+            return
+        }
+        
+        typingIndicatorView.content = L10n.MessageList.TypingIndicator.users(name, typingMembers.count - 1)
+        typingIndicatorView.isHidden = false
+    }
+    
+    /// Hides typing Indicator
+    /// - Parameter typingMembers: typing members gotten from `channelController`
+    open func hideTypingIndicator() {
+        typingIndicatorView.isHidden = true
+    }
+    
     // MARK: - _ChatMessageActionsVCDelegate
 
     open func chatMessageActionsVC(
@@ -426,7 +495,7 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
             }
         case is ThreadReplyActionItem:
             dismiss(animated: true) { [weak self] in
-                self?.showThread(for: message)
+                self?.showThread(messageId: message.parentMessageId ?? message.id)
             }
         default:
             return
@@ -446,7 +515,8 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
     
     open func messageContentViewDidTapOnThread(_ indexPath: IndexPath?) {
         guard let indexPath = indexPath else { return log.error("IndexPath is not available") }
-        showThread(for: channelController.messages[indexPath.item])
+        let message = channelController.messages[indexPath.item]
+        showThread(messageId: message.parentMessageId ?? message.id)
     }
     
     open func messageContentViewDidTapOnQuotedMessage(_ indexPath: IndexPath?) {
