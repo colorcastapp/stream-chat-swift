@@ -3,14 +3,16 @@
 //
 
 import Nuke
+import StreamChat
 import UIKit
 
 extension UIImageView {
     @discardableResult
-    func loadImage(
+    func loadImage<ExtraData: ExtraDataTypes>(
         from url: URL?,
         placeholder: UIImage? = nil,
         resizeAutomatically: Bool = true,
+        components: _Components<ExtraData>,
         completion: ImageTask.Completion? = nil
     ) -> ImageTask? {
         guard !SystemEnvironment.isTests else {
@@ -45,7 +47,8 @@ extension UIImageView {
             ? [ImageProcessors.Resize(size: bounds.size, contentMode: .aspectFill, crop: true)]
             : []
  
-        let request = ImageRequest(url: url, processors: preprocessors)
+        let imageKey = components.imageCDN.cachingKey(forImage: url)
+        let request = ImageRequest(url: url, processors: preprocessors, options: ImageRequestOptions(filteredURL: imageKey))
         let options = ImageLoadingOptions(placeholder: placeholder)
 
         currentImageLoadingTask = Nuke.loadImage(with: request, options: options, into: self, completion: completion)
