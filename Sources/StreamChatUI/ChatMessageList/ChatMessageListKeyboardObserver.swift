@@ -42,7 +42,7 @@ open class ChatMessageListKeyboardObserver {
         let localOldFrame = containerView.convert(oldFrame, from: nil)
 
         // message composer follows keyboard
-        composerBottomConstraint?.constant = -(containerView.bounds.height - localFrame.minY)
+        //composerBottomConstraint?.constant = -(containerView.bounds.height - localFrame.minY)
 
         // calculate new contentOffset for message list, so bottom message still visible when keyboard appears
         var keyboardTop = localFrame.minY
