@@ -24,13 +24,6 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
     FileActionContentViewDelegate {
     /// Controller for observing data changes within the channel
     open var channelController: _ChatChannelController<ExtraData>!
-    
-    /// Observer responsible for setting the correct offset when keyboard frame is changed
-    open lazy var keyboardObserver = ChatMessageListKeyboardObserver(
-        containerView: view,
-        scrollView: collectionView,
-        composerBottomConstraint: messageComposerBottomConstraint
-    )
 
     /// User search controller passed directly to the composer
     open lazy var userSuggestionSearchController: _ChatUserSearchController<ExtraData> =
@@ -168,16 +161,12 @@ open class _ChatMessageListVC<ExtraData: ExtraDataTypes>:
     
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
-        keyboardObserver.register()
     }
 
     override open func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
         resignFirstResponder()
-        
-        keyboardObserver.unregister()
     }
     
     /// Returns layout options for the message on given `indexPath`.

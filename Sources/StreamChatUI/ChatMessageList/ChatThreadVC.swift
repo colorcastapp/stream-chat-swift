@@ -25,13 +25,6 @@ open class _ChatThreadVC<ExtraData: ExtraDataTypes>:
     /// Controller for observing data changes within the parent thread message.
     open var messageController: _ChatMessageController<ExtraData>!
 
-    /// Observer responsible for setting the correct offset when keyboard frame is changed
-    open lazy var keyboardObserver = ChatMessageListKeyboardObserver(
-        containerView: view,
-        scrollView: collectionView,
-        composerBottomConstraint: messageComposerBottomConstraint
-    )
-
     /// User search controller passed directly to the composer
     open lazy var userSuggestionSearchController: _ChatUserSearchController<ExtraData> =
         channelController.client.userSearchController()
@@ -142,8 +135,6 @@ open class _ChatThreadVC<ExtraData: ExtraDataTypes>:
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
-        keyboardObserver.register()
-
         // Scroll to newest message when there are no replies
         // breaks the `contentOffset` set by parent message
         if !messageController.replies.isEmpty {
@@ -155,8 +146,6 @@ open class _ChatThreadVC<ExtraData: ExtraDataTypes>:
         super.viewDidDisappear(animated)
 
         resignFirstResponder()
-
-        keyboardObserver.unregister()
     }
 
     /// Returns the content view class for the message at given `indexPath`
